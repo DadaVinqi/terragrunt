@@ -66,8 +66,8 @@ const (
 	// OptOutAuth gates flags that opt out of running --auth-provider-cmd in
 	// specific phases (currently --no-discovery-auth-provider-cmd).
 	OptOutAuth = "opt-out-auth"
-	// LsTUI gates the interactive Miller-columns browser for `terragrunt list --tui`.
-	LsTUI = "ls-tui"
+	// BrowseTUI gates the interactive Miller-columns browser for `terragrunt browse`.
+	BrowseTUI = "browse-tui"
 )
 
 const (
@@ -145,7 +145,7 @@ func NewExperiments() Experiments {
 			Name: OptOutAuth,
 		},
 		{
-			Name: LsTUI,
+			Name: BrowseTUI,
 		},
 	}
 }
