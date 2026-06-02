@@ -182,7 +182,7 @@ func GenerateStackFile(ctx context.Context, l log.Logger, pctx *ParsingContext, 
 		}
 	}
 
-	casEnabled := pctx.Experiments.Evaluate(experiment.CAS) && !pctx.NoCAS
+	casEnabled := !pctx.NoCAS
 
 	if err := validateUpdateSourceWithCAS(stackFile, stackFilePath, casEnabled); err != nil {
 		return err
