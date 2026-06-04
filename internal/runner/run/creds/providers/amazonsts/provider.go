@@ -51,11 +51,11 @@ func (provider *Provider) GetCredentials(ctx context.Context, l log.Logger) (*pr
 
 	var resp *types.Credentials
 
-	err := telemetry.TelemeterFromContext(ctx).Collect(ctx, "creds_assume_role", map[string]any{
+	err := telemetry.TelemeterFromContext(ctx).Collect(ctx, l, "creds_assume_role", map[string]any{
 		"role_arn":     iamRoleOpts.RoleARN,
 		"session_name": iamRoleOpts.AssumeRoleSessionName,
 		"duration":     iamRoleOpts.AssumeRoleDuration,
-	}, func(ctx context.Context) error {
+	}, func(ctx context.Context, l log.Logger) error {
 		var assumeErr error
 
 		resp, assumeErr = awshelper.AssumeIamRole(ctx, iamRoleOpts, "", provider.env)

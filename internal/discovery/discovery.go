@@ -40,10 +40,10 @@ func (d *Discovery) Discover(
 
 	l.Debugf("Discovery: starting filesystem phase (workers=%d, with_worktree=%t)", d.numWorkers, withWorktree)
 
-	err = telemetry.TelemeterFromContext(ctx).Collect(ctx, "discovery_phase_filesystem", map[string]any{
+	err = telemetry.TelemeterFromContext(ctx).Collect(ctx, l, "discovery_phase_filesystem", map[string]any{
 		"num_workers":   d.numWorkers,
 		"with_worktree": withWorktree,
-	}, func(childCtx context.Context) error {
+	}, func(childCtx context.Context, l log.Logger) error {
 		var phaseErr error
 
 		results, phaseErr = d.runFilesystemPhase(childCtx, l, opts)
@@ -72,7 +72,7 @@ func (d *Discovery) Discover(
 		l.Debugf("Discovery: starting parse phase (discovered=%d, candidates=%d, reasons=%s)",
 			len(discovered), len(candidates), reasonsStr)
 
-		err = telemetry.TelemeterFromContext(ctx).Collect(ctx, "discovery_phase_parse", map[string]any{
+		err = telemetry.TelemeterFromContext(ctx).Collect(ctx, l, "discovery_phase_parse", map[string]any{
 			"num_workers":       d.numWorkers,
 			"discovered_in":     len(discovered),
 			"candidates_in":     len(candidates),
@@ -80,7 +80,7 @@ func (d *Discovery) Discover(
 			"parse_exclude":     d.parseExclude,
 			"read_files":        d.readFiles,
 			"activation_reason": reasonsStr,
-		}, func(childCtx context.Context) error {
+		}, func(childCtx context.Context, l log.Logger) error {
 			var phaseErr error
 
 			results, phaseErr = d.runParsePhase(childCtx, l, opts, discovered, candidates)
@@ -108,13 +108,13 @@ func (d *Discovery) Discover(
 		l.Debugf("Discovery: starting graph phase (discovered=%d, candidates=%d, max_depth=%d, has_dependent_filters=%t)",
 			len(discovered), len(candidates), d.maxDependencyDepth, d.classifier.HasDependentFilters())
 
-		err = telemetry.TelemeterFromContext(ctx).Collect(ctx, "discovery_phase_graph", map[string]any{
+		err = telemetry.TelemeterFromContext(ctx).Collect(ctx, l, "discovery_phase_graph", map[string]any{
 			"num_workers":           d.numWorkers,
 			"max_dependency_depth":  d.maxDependencyDepth,
 			"discovered_in":         len(discovered),
 			"candidates_in":         len(candidates),
 			"has_dependent_filters": d.classifier.HasDependentFilters(),
-		}, func(childCtx context.Context) error {
+		}, func(childCtx context.Context, l log.Logger) error {
 			var phaseErr error
 
 			results, phaseErr = d.runGraphPhase(childCtx, l, opts, discovered, candidates)
@@ -137,11 +137,11 @@ func (d *Discovery) Discover(
 		l.Debugf("Discovery: starting relationship phase (components=%d, max_depth=%d)",
 			len(components), d.maxDependencyDepth)
 
-		err = telemetry.TelemeterFromContext(ctx).Collect(ctx, "discovery_phase_relationship", map[string]any{
+		err = telemetry.TelemeterFromContext(ctx).Collect(ctx, l, "discovery_phase_relationship", map[string]any{
 			"num_workers":          d.numWorkers,
 			"max_dependency_depth": d.maxDependencyDepth,
 			"components_in":        len(components),
-		}, func(childCtx context.Context) error {
+		}, func(childCtx context.Context, l log.Logger) error {
 			var phaseErr error
 
 			components, phaseErr = d.runRelationshipPhase(childCtx, l, opts, components)
@@ -169,9 +169,8 @@ func (d *Discovery) Discover(
 		components = filtered
 	}
 
-	cycleCheckErr := telemetry.TelemeterFromContext(ctx).Collect(
-		ctx, "discovery_cycle_check", map[string]any{},
-		func(childCtx context.Context) error {
+	cycleCheckErr := telemetry.TelemeterFromContext(ctx).Collect(ctx, l, "discovery_cycle_check", map[string]any{},
+		func(childCtx context.Context, l log.Logger) error {
 			if _, cycleErr := components.CycleCheck(); cycleErr != nil {
 				l.Debugf("Cycle: %v", cycleErr)
 
@@ -239,10 +238,10 @@ func (d *Discovery) runFilesystemPhase(
 
 		l.Debugf("Discovery: starting filesystem walk at %s", d.workingDir)
 
-		err := telemetry.TelemeterFromContext(ctx).Collect(ctx, "discovery_filesystem_walk", map[string]any{
+		err := telemetry.TelemeterFromContext(ctx).Collect(ctx, l, "discovery_filesystem_walk", map[string]any{
 			"num_workers": d.numWorkers,
 			"working_dir": d.workingDir,
-		}, func(childCtx context.Context) error {
+		}, func(childCtx context.Context, l log.Logger) error {
 			phase := NewFilesystemPhase(d.numWorkers)
 
 			var phaseErr error
@@ -280,10 +279,10 @@ func (d *Discovery) runFilesystemPhase(
 
 			l.Debugf("Discovery: starting worktree walk (git_expressions=%d)", len(d.gitExpressions))
 
-			err := telemetry.TelemeterFromContext(ctx).Collect(ctx, "discovery_worktree_walk", map[string]any{
+			err := telemetry.TelemeterFromContext(ctx).Collect(ctx, l, "discovery_worktree_walk", map[string]any{
 				"num_workers":          d.numWorkers,
 				"git_expression_count": len(d.gitExpressions),
-			}, func(childCtx context.Context) error {
+			}, func(childCtx context.Context, l log.Logger) error {
 				phase := NewWorktreePhase(d.gitExpressions, d.numWorkers)
 
 				var phaseErr error
@@ -387,8 +386,8 @@ func (d *Discovery) runGraphPhase(
 		var buildErrs []error
 
 		telemetry.TelemeterFromContext(ctx).Collect( //nolint:errcheck
-			ctx, "discover_dependents", map[string]any{},
-			func(childCtx context.Context) error {
+			ctx, l, "discover_dependents", map[string]any{},
+			func(childCtx context.Context, l log.Logger) error {
 				buildErrs = d.buildDependencyGraph(childCtx, l, opts, allComponents)
 				return errors.Join(buildErrs...)
 			})
@@ -409,8 +408,8 @@ func (d *Discovery) runGraphPhase(
 	)
 
 	telemetry.TelemeterFromContext(ctx).Collect( //nolint:errcheck
-		ctx, "discover_dependencies", map[string]any{},
-		func(childCtx context.Context) error {
+		ctx, l, "discover_dependencies", map[string]any{},
+		func(childCtx context.Context, l log.Logger) error {
 			result, err = phase.Run(childCtx, l, &PhaseInput{
 				Opts:       opts,
 				Components: resultsToComponents(discovered),
