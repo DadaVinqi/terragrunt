@@ -100,6 +100,10 @@ type TerragruntMirror struct {
 func (m *TerragruntMirror) RequireSSH(t *testing.T) {
 	t.Helper()
 
+	if IsWindows() {
+		t.Skip("the in-process git-over-SSH mirror relies on Unix-only setup (GIT_SSH_COMMAND, /dev/null) unavailable on the Windows runner")
+	}
+
 	if m.SSHURL == "" {
 		t.Skip("ssh mirror unavailable (ssh client or git-upload-pack missing)")
 	}
